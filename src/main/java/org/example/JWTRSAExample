@@ -4,7 +4,7 @@ import java.security.*;
 import java.util.Base64;
 import javax.crypto.Cipher;
 
-public class JwtExample {
+public class JWTRSAExample {
 
     // Method to generate JWT using RSA private key
     public static String generateJwt(String headerJson, String payloadJson, PrivateKey privateKey) throws Exception {
