@@ -1,0 +1,87 @@
+package org.example;
+
+import java.security.*;
+import java.util.Base64;
+import javax.crypto.Cipher;
+
+public class JwtExample {
+
+    // Method to generate JWT using RSA private key
+    public static String generateJwt(String headerJson, String payloadJson, PrivateKey privateKey) throws Exception {
+        // Encode Header and Payload
+        String header = base64UrlEncode(headerJson.getBytes("UTF-8"));
+        String payload = base64UrlEncode(payloadJson.getBytes("UTF-8"));
+
+        // Create Signature
+        String signingInput = header + "." + payload;
+        String signature = createRsaSignature(signingInput, privateKey);
+
+        // Combine all parts
+        return signingInput + "." + signature;
+    }
+
+    // Method to validate JWT using RSA public key
+    public static boolean validateJwt(String token, PublicKey publicKey) throws Exception {
+        // Split JWT into parts
+        String[] parts = token.split("\\.");
+        if (parts.length != 3) {
+            return false;
+        }
+
+        String header = parts[0];
+        String payload = parts[1];
+        String signature = parts[2];
+
+        String signingInput = header + "." + payload;
+        return verifyRsaSignature(signingInput, signature, publicKey);
+    }
+
+    // Helper method to create RSA signature using SHA256withRSA
+    private static String createRsaSignature(String data, PrivateKey privateKey) throws Exception {
+        Signature privateSignature = Signature.getInstance("SHA256withRSA");
+        privateSignature.initSign(privateKey);
+        privateSignature.update(data.getBytes("UTF-8"));
+        byte[] signedBytes = privateSignature.sign();
+        return base64UrlEncode(signedBytes);
+    }
+
+    // Helper method to verify RSA signature
+    private static boolean verifyRsaSignature(String data, String signature, PublicKey publicKey) throws Exception {
+        Signature publicSignature = Signature.getInstance("SHA256withRSA");
+        publicSignature.initVerify(publicKey);
+        publicSignature.update(data.getBytes("UTF-8"));
+        byte[] signatureBytes = base64UrlDecodeToBytes(signature);
+        return publicSignature.verify(signatureBytes);
+    }
+
+    // Helper method for Base64 URL encoding
+    private static String base64UrlEncode(byte[] bytes) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    // Helper method for Base64 URL decoding
+    private static byte[] base64UrlDecodeToBytes(String str) {
+        return Base64.getUrlDecoder().decode(str);
+    }
+
+    public static void main(String[] args) throws Exception {
+        // Generate RSA key pair (for demo purposes)
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        KeyPair pair = keyGen.generateKeyPair();
+        PrivateKey privateKey = pair.getPrivate();
+        PublicKey publicKey = pair.getPublic();
+
+        // Header and Payload
+        String headerJson = "{\"alg\":\"RS256\",\"typ\":\"JWT\"}";
+        String payloadJson = "{\"sub\":\"1234567890\",\"name\":\"John Doe\",\"iat\":1516239022}";
+
+        // Generate JWT
+        String jwt = generateJwt(headerJson, payloadJson, privateKey);
+        System.out.println("Generated JWT: " + jwt);
+
+        // Validate JWT
+        boolean isValid = validateJwt(jwt, publicKey);
+        System.out.println("Is JWT valid? " + isValid);
+    }
+}
